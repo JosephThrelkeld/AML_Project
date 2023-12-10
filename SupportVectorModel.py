@@ -1,49 +1,71 @@
-from PerformPCA import *
+import numpy as np
+import numexpr as ne
+from sklearn.linear_model import SGDClassifier
 
-from sklearn.model_selection import train_test_split
-from sklearn.datasets import fetch_lfw_people
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics import classification_report
-from sklearn.metrics import confusion_matrix
-from sklearn.decomposition import PCA as RandomizedPCA
-from sklearn.svm import SVC
+class SVM_RBF_OVO:
+    def __init__ (self,C,gamma):
+        self.C = C
+        self.gamma = gamma
+        self.alpha = None
+        self.classes = None 
+        self.supportVecs = None
+        self.supportVecLabels = None
+        self.classifiers = []
+        self.bias = None
+        
+    def rbfMatrix(self,samples):
+        #K(x,x') = exp(-gamma||x-x'||^2)
+        #||x-y||^2 = ||x||^2 + ||y||^2 - 2 * x^T * y
+        matrixNorm = np.sum(samples**2,axis=-1) #Summing squares of rows of matrix
+        kernelMatrix = ne.evaluate('exp(-g*(A+B-2*C))', {
+            'A': matrixNorm[:,None],
+            'B': matrixNorm[None,:],
+            'C': np.dot(samples,samples.T),
+            'g': self.gamma
+        })
+        return kernelMatrix
+    
+    def fit(self,samples,targets):
+        print("fitting data...")
+        self.classes = np.unique(targets) #Setting classes for use in predict
+        
+        rbfSamples = self.rbfMatrix(samples)
+        #Create classifier for each class pair
+        for i in range(len(self.classes)):
+            for j in range(i+1,len(self.classes)):
+                c1, c2 = self.classes[i], self.classes[j]
+                samplesPair,targetsPair = self.extractPair(rbfSamples,targets,c1,c2)
+                
+                classifier = SGDClassifier(loss="hinge",penalty="l2",max_iter=50)
+                classifier.coef_ = self.C
+                classifier.fit(samplesPair,targetsPair)
+                self.classifiers.append((c1,c2,classifier))
+                
+    def predictSample(self,sample):
+        print("prediciting labels for new data...")
+        #Use all binary classifiers and use class with most votes
+        votes = np.zeros(len(self.classes))
+        for c1,c2,classifier in self.classifiers:
+            if (classifier.predict(sample.reshape(1,-1)) == 1):
+                votes[c1] += 1
+            else:
+                votes[c2] += 1
+        return max(votes)
 
+    def predict(self,samples):
+        rbfSamples = self.rbfMatrix(samples)
+        predictions = [self.predictSample(sample) for sample in rbfSamples]
+        return np.array(predictions)
+                
+        
+    def extractPair(self,samples,targets,c1,c2):
+        #Extract only samples where labels are of either class
+        #Make new labels(targets) to match if sample is of the first class
+        mask = np.logical_or(targets == c1, targets == c2) 
+        samplesPair = samples[mask]
+        targetsPair = np.where(targets[mask] == c1, 1,-1)
+        return samplesPair,targetsPair
+        
 
-pathlist = Path("att_faces")
-facesTrain, facesTest, targetsTrain, targetsTest = extractFaces(pathlist) 
-facesTrainStandardized = (facesTrain - np.average(facesTrain,axis=0)) / np.std(facesTrain,axis=0)
-facesTestStandardized = (facesTest - np.average(facesTest, axis=0)) / np.std(facesTest, axis=0)
-
-
-nComp = 50
-sortedEigenVecs = pca(facesTrain)
-eigenVecSubset = sortedEigenVecs[:,0:nComp]
-eigenVecSubsetT = eigenVecSubset.T.real
-#eigenVecSubset = RandomizedPCA(n_components=nComp,whiten=True).fit(facesTrain)
-
-
-facesTrainReduced = np.dot(facesTrainStandardized,eigenVecSubset)
-facesTestReduced = np.dot(facesTestStandardized,eigenVecSubset)
-
-
-
-print(facesTrain.shape)
-print(facesTrainReduced.shape)
-
-print(facesTest.shape)
-print(facesTestReduced.shape)
-
-param_grid = {'C': [1e3,5e3,1e4,5e4,1e5], 'gamma': [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.1],}
-clf = GridSearchCV(SVC(kernel='rbf',class_weight='balanced'),param_grid)
-clf.fit(facesTrainReduced,targetsTrain)
-print(clf.best_estimator_)
-
-predsTest = clf.predict(facesTestReduced)
-
-print(classification_report(targetsTest, predsTest))
-
-
-#fig, axes = plt.subplots(4,4,sharex=True,sharey=True,figsize=(8,10))
-#for i in range(16):
-#    axes[i%4][i//4].imshow(eigenVecSubsetT[i].reshape(112,92),cmap='gray')
-#plt.show()
+    
+        

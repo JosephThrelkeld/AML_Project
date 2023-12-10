@@ -1,10 +1,8 @@
 import matplotlib.pyplot as plt
-from FaceExtract import *
+import numpy as np
 
 def pca(faces):
-    
-
-    avgFace = np.average(faces, axis=0)
+    avgFace = np.average(faces,axis=0)
     X = faces
     X = X - np.average(X,axis=0)
 
