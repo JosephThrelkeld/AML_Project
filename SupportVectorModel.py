@@ -4,17 +4,11 @@ from sklearn.svm import SVC
 from sklearn.metrics.pairwise import rbf_kernel
 
 class SVM_RBF_OVO:
-    def __init__ (self,C,gamma):
+    def __init__ (self,C):
         self.C = C
-        self.gamma = gamma
-        self.alpha = None
         self.classes = None 
-        self.supportVecs = None
         self.supportVecLabels = None
         self.classifiers = []
-        self.bias = None
-        self.learningRate = 0.01
-        self.tolerance = 1e-3
         
     def rbfMatrix(self,samples):
         return np.exp(-self.gamma * np.sum((samples-samples[:,np.newaxis])**2, axis=-1))
@@ -28,7 +22,7 @@ class SVM_RBF_OVO:
                 c1, c2 = self.classes[i], self.classes[j]
                 samplesPair,targetsPair = self.extractPair(samples,targets,c1,c2)
                 
-                classifier = SVC(kernel='rbf',C=self.C,gamma=self.gamma)
+                classifier = SVC(C=self.C)
                 classifier.fit(samplesPair,targetsPair)
                 self.classifiers.append((c1,c2,classifier))
                 

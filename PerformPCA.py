@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def pca(faces):
+    print("Performing PCA")
     avgFace = np.average(faces,axis=0)
     X = faces
     X = X - np.average(X,axis=0)

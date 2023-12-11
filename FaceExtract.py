@@ -1,15 +1,16 @@
 from PIL import Image
 import numpy as np
 from pathlib import Path
-import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
-pathlist = Path("att_faces")
 
-def extractFaces(pathlist):
-    facesTrain = np.zeros((320,10304))
-    facesTest = np.zeros((80,10304))
-    targetsTrain = np.zeros(320)
-    targetsTest = np.zeros(80)
+def extractFaces(pathlist, testSize):
+    print("Extracting faces...")
+    if (testSize > 9):
+        raise Exception("Test size must be less or equal to 9")
+    trainSize = 10 - testSize
+    facesTrain = np.zeros((trainSize * 40,10304))
+    facesTest = np.zeros((testSize * 40,10304))
+    targetsTrain = np.zeros(trainSize * 40)
+    targetsTest = np.zeros(testSize * 40)
     personIDX = 0
     trainIDX = 0
     testIDX = 0
@@ -21,7 +22,7 @@ def extractFaces(pathlist):
             im = Image.open(pathStr)
             imArr= np.asarray(im)
             imArr = np.asarray(im).flatten()
-            if (picIDX > 7): #Add last two test data
+            if (picIDX > trainSize - 1): #Add last two test data
                 facesTest[testIDX] = imArr
                 targetsTest[testIDX] = personIDX
                 testIDX += 1
