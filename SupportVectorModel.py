@@ -1,20 +1,16 @@
 import numpy as np
-import numexpr as ne
 from sklearn.svm import SVC
 from sklearn.metrics.pairwise import rbf_kernel
 
-class SVM_RBF_OVO:
+class SVM_OVO:
     def __init__ (self,C):
         self.C = C
         self.classes = None 
         self.supportVecLabels = None
         self.classifiers = []
-        
-    def rbfMatrix(self,samples):
-        return np.exp(-self.gamma * np.sum((samples-samples[:,np.newaxis])**2, axis=-1))
-    
+          
     def fit(self,samples,targets):
-        print("fitting data...")
+        print("   fitting data...")
         self.classes = np.unique(targets) #Setting classes for use in predict
         #Create classifier for each class pair
         for i in range(len(self.classes)):
@@ -37,7 +33,7 @@ class SVM_RBF_OVO:
         return max(votes, key=votes.get)
 
     def predict(self,samples):
-        print("prediciting labels for new data...")
+        print("   prediciting labels for new data...")
         predictions = [self.predictSample(sample) for sample in samples]
         return np.array(predictions)
                 
